@@ -18,6 +18,8 @@ CHANNELS = [
 WINDOWSIZE = 100 # samples
 INTERVAL   = 25 # ms
 
+FANCY = False # set to false for high performance
+
 def mean(x):
 	return sum(x) / len(x)
 # end function
@@ -38,8 +40,14 @@ figure.canvas.set_window_title('LivePlot')
 
 ax.set(xlabel='time (s)', ylabel='voltage (V)',	title='voltage over time')
 
-# hide x axis ticks, as I couldn't find a way to update them when using blit=True
-figure.gca().axes.get_xaxis().set_ticks([])
+# hide axis ticks, as I couldn't find a way to update them when using blit=True
+if not FANCY:
+	figure.gca().axes.get_xaxis().set_ticks([])
+	figure.gca().axes.get_yaxis().set_ticks([])
+# end if
+
+#figure.gca().axhline(linewidth=4, color='r')
+figure.gca().grid()
 
 #ax.text(0.5, 0.5, 'some text', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
 
@@ -71,7 +79,7 @@ def update(frame):
 	figure.gca().autoscale_view()
 	return lines + [leg]
 
-animation = FuncAnimation(figure, update, interval=INTERVAL, blit=True)
+animation = FuncAnimation(figure, update, interval=INTERVAL, blit=not FANCY)
 
 pyplot.show()
 
