@@ -11,21 +11,21 @@ import sys
 import threading
 import Queue
 import time
+import os
 
 WINDOWSIZE = 100 # samples
 INTERVAL   = 25 # ms
-
+QUEUE_SIZE = 32 # entries
 FANCY = False # set to false for high performance
 
 def mean(x):
 	return sum(x) / len(x)
 # end function
 
-data_queue = Queue.Queue()
-terminating = False
+data_queue = Queue.Queue(maxsize=QUEUE_SIZE)
 
 def consume_stdin():
-	while not terminating:
+	while True:
 		sample = [float(s) for s in sys.stdin.readline().split()]
 		data_queue.put(sample)
 	# end while
@@ -80,19 +80,21 @@ def update(frame):
 		# end for
 		data_queue.task_done()
 		samples_read += 1
-		break # TODO looping results into "lags" when pipe is buffered
 	# end while
 
-	print(samples_read)
+	#print(samples_read)
 
+	# handle legend
+	# needs to be done every time for some reason
 	leg = ax.legend(loc='lower right')
+	pyplot.setp(leg.texts, family='monospace')	
+	
 	if samples_read > 0:
 		for i in range(num_channels):
 			lines[i].set_data(x, y[i])
 			lines[i].set_label('{:s}:{: 0.3f} ({: 0.3f} |{: 0.3f} |{: 0.3f} ) {:s}'.format(
 				mononames[i+1], y[i][-1], min(y[i]), mean(y[i]), max(y[i]), '???'))
 		# end for
-		pyplot.setp(leg.texts, family='monospace')
 		figure.gca().relim()
 		#figure.gca().grid()
 		figure.gca().autoscale_view()
@@ -100,13 +102,11 @@ def update(frame):
 	return lines + [leg]
 
 t = threading.Thread(target=consume_stdin)
-#t.daemon = True
+t.daemon = True # don't prevent program to terminate
 t.start()
 
 animation = FuncAnimation(figure, update, interval=INTERVAL, blit=not FANCY)
 
 pyplot.show()
-print("Terminating...")
-terminating = True
-t.join()
-print("Terminated.")
+print("Terminated")
+

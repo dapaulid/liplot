@@ -23,7 +23,11 @@ print(SEPARATOR.join(ch[0] for ch in CHANNELS))
 t = 0.0 # [s]
 while True:
 	print(SEPARATOR.join("%f" % ch[1](t) for ch in CHANNELS))
-#	sys.stdout.flush() # TODO most scripts probably won't do that
+	# TODO most scripts probably won't flush every time, which could
+	# result in a "laggy" plot
+	# as a workaround, the "unbuffer" command (apt install tcl8.6 expect)
+	# could be prepended before the script
+	#sys.stdout.flush() 	
 	
 	time.sleep(INTERVAL)
 	t += INTERVAL
