@@ -16,11 +16,15 @@ CHANNELS = [
 INTERVAL   = 0.025 # [s]
 SEPARATOR  = '\t'
 
+# see if liveplot can cope with some traces
+print("This is a friendly hello from data generation script!")
+
 # output headers
 print(SEPARATOR.join(ch[0] for ch in CHANNELS))
 
 # output data
 t = 0.0 # [s]
+cnt = 0
 while True:
 	print(SEPARATOR.join("%f" % ch[1](t) for ch in CHANNELS))
 	# TODO most scripts probably won't flush every time, which could
@@ -31,4 +35,11 @@ while True:
 	
 	time.sleep(INTERVAL)
 	t += INTERVAL
+	cnt += 1
+	
+	# see if liveplot can cope with some traces
+	if cnt % 100 == 0:
+		print("Generated %d samples so far." % cnt)
+	# end if
+	
 # end while

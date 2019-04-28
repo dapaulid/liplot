@@ -18,24 +18,66 @@ INTERVAL   = 25 # ms
 QUEUE_SIZE = 32 # entries
 FANCY = False # set to false for high performance
 
+SCRIPT_NAME = os.path.splitext(os.path.basename(__file__))[0]
+
 def mean(x):
 	return sum(x) / len(x)
 # end function
 
+def trace(msg):
+	print("[%s] %s" % (SCRIPT_NAME, msg))
+# end function
+
 data_queue = Queue.Queue(maxsize=QUEUE_SIZE)
+
+def try_parse_sample(line):
+	try:
+		return [float(col) for col in line.split()]
+	except ValueError:
+		return None
+	# end if
+# end def
 
 def consume_stdin():
 	while True:
-		sample = [float(s) for s in sys.stdin.readline().split()]
-		data_queue.put(sample)
+		line = sys.stdin.readline()
+		sample = try_parse_sample(line)
+		if sample:
+			data_queue.put(sample)
+		else:
+			# forward
+			sys.stdout.write(line)
+		# end if
 	# end while
 # end function
 
 
-print("Waiting for channel names...")
-names = sys.stdin.readline().split()
-num_channels = len(names)-1
-mononames = map(lambda s: s.ljust(len(max(names, key=len))), names)
+trace("waiting for data...")
+last_line = None
+while True:
+	line = sys.stdin.readline()
+	first_sample = try_parse_sample(line)
+	if first_sample:
+		n = len(first_sample)
+		num_channels = n-1
+		# check for headers
+		names = last_line.split()
+		if len(names) != n:
+			# not matching, no channel names
+			names = [None] * len(first_sample)
+		# end if
+		data_queue.put(first_sample)
+		break
+	else:
+		# forward
+		sys.stdout.write(line)
+	# end if
+	last_line = line
+# end while
+
+#names = sys.stdin.readline().split()
+#num_channels = len(names)-1
+labels = [s.ljust(len(max(names, key=len)))+':' if s != None else '' for s in names]
 
 x = collections.deque(maxlen=WINDOWSIZE)
 y = []
@@ -92,8 +134,8 @@ def update(frame):
 	if samples_read > 0:
 		for i in range(num_channels):
 			lines[i].set_data(x, y[i])
-			lines[i].set_label('{:s}:{: 0.3f} ({: 0.3f} |{: 0.3f} |{: 0.3f} ) {:s}'.format(
-				mononames[i+1], y[i][-1], min(y[i]), mean(y[i]), max(y[i]), '???'))
+			lines[i].set_label('{:s}{: 0.3f} ({: 0.3f} |{: 0.3f} |{: 0.3f} )'.format(
+				labels[i+1], y[i][-1], min(y[i]), mean(y[i]), max(y[i])))
 		# end for
 		figure.gca().relim()
 		#figure.gca().grid()
@@ -107,6 +149,10 @@ t.start()
 
 animation = FuncAnimation(figure, update, interval=INTERVAL, blit=not FANCY)
 
-pyplot.show()
-print("Terminated")
+try:
+	pyplot.show()
+	trace("terminated")
+except KeyboardInterrupt:
+	trace("keyboard interrupt")
+# end try
 
