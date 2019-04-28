@@ -7,13 +7,7 @@ from random import randrange
 import numpy as np
 import random
 import collections
-
-CHANNELS = [
-	('random', lambda t: random.uniform(0, 1), 'mm'), 
-	('SIN', lambda t: np.sin(2*np.pi*t), 'V'),
-	('COS', lambda t: np.cos(2*np.pi*t), 'V'),
-	#('para', lambda t: 3*t*t-2*t+1, 's'),
-]
+import sys
 
 WINDOWSIZE = 100 # samples
 INTERVAL   = 25 # ms
@@ -24,7 +18,10 @@ def mean(x):
 	return sum(x) / len(x)
 # end function
 
-names = [ch[0] for ch in CHANNELS]
+
+print("Waiting for channel names...")
+names = sys.stdin.readline().split()
+num_channels = len(names)-1
 mononames = map(lambda s: s.ljust(len(max(names, key=len))), names)
 
 x = collections.deque(maxlen=WINDOWSIZE)
@@ -51,26 +48,25 @@ figure.gca().grid()
 
 #ax.text(0.5, 0.5, 'some text', horizontalalignment='center', verticalalignment='center', transform=ax.transAxes)
 
-for i in range(len(CHANNELS)):
+for i in range(num_channels):
 	y.append(collections.deque(maxlen=WINDOWSIZE))
 	lines.append(pyplot.plot([], [])[0])
-	lines[i].set_label('Label via method')
 # end for
 
-t = 0
-
 def update(frame):
-	global t
-	t += INTERVAL / 1000.0
 
+	# read sample
+	sample = [float(s) for s in sys.stdin.readline().split()]
+	dx = sample[0]
+	dy = sample[1:]
 #	dx, dy = read_samples(t)
 
-	x.append(t)
-	for i in range(len(CHANNELS)):
-		y[i].append(CHANNELS[i][1](t))
+	x.append(dx)
+	for i in range(num_channels):
+		y[i].append(dy[i])
 		lines[i].set_data(x, y[i])
 		lines[i].set_label('{:s}:{: 0.3f} ({: 0.3f} |{: 0.3f} |{: 0.3f} ) {:s}'.format(
-			mononames[i], y[i][-1], min(y[i]), mean(y[i]), max(y[i]), CHANNELS[i][2]))
+			mononames[i+1], y[i][-1], min(y[i]), mean(y[i]), max(y[i]), '???'))
 	# end for
 	leg = ax.legend(loc='lower right')
 	pyplot.setp(leg.texts, family='monospace')
