@@ -3,6 +3,7 @@
 import random
 import time
 import math
+import sys
 
 CHANNELS = [
 	('time',   lambda t: t, 's'),
@@ -22,6 +23,8 @@ print(SEPARATOR.join(ch[0] for ch in CHANNELS))
 t = 0.0 # [s]
 while True:
 	print(SEPARATOR.join("%f" % ch[1](t) for ch in CHANNELS))
+#	sys.stdout.flush() # TODO most scripts probably won't do that
+	
 	time.sleep(INTERVAL)
 	t += INTERVAL
 # end while

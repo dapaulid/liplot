@@ -8,6 +8,9 @@ import numpy as np
 import random
 import collections
 import sys
+import threading
+import Queue
+import time
 
 WINDOWSIZE = 100 # samples
 INTERVAL   = 25 # ms
@@ -16,6 +19,16 @@ FANCY = False # set to false for high performance
 
 def mean(x):
 	return sum(x) / len(x)
+# end function
+
+data_queue = Queue.Queue()
+terminating = False
+
+def consume_stdin():
+	while not terminating:
+		sample = [float(s) for s in sys.stdin.readline().split()]
+		data_queue.put(sample)
+	# end while
 # end function
 
 
@@ -55,27 +68,45 @@ for i in range(num_channels):
 
 def update(frame):
 
-	# read sample
-	sample = [float(s) for s in sys.stdin.readline().split()]
-	dx = sample[0]
-	dy = sample[1:]
-#	dx, dy = read_samples(t)
+	# read available samples
+	samples_read = 0
+	while not data_queue.empty():
+		sample = data_queue.get_nowait()
+		dx = sample[0]
+		dy = sample[1:]
+		x.append(dx)
+		for i in range(num_channels):
+			y[i].append(dy[i])
+		# end for
+		data_queue.task_done()
+		samples_read += 1
+		break # TODO looping results into "lags" when pipe is buffered
+	# end while
 
-	x.append(dx)
-	for i in range(num_channels):
-		y[i].append(dy[i])
-		lines[i].set_data(x, y[i])
-		lines[i].set_label('{:s}:{: 0.3f} ({: 0.3f} |{: 0.3f} |{: 0.3f} ) {:s}'.format(
-			mononames[i+1], y[i][-1], min(y[i]), mean(y[i]), max(y[i]), '???'))
-	# end for
+	print(samples_read)
+
 	leg = ax.legend(loc='lower right')
-	pyplot.setp(leg.texts, family='monospace')
-	figure.gca().relim()
-	#figure.gca().grid()
-	figure.gca().autoscale_view()
+	if samples_read > 0:
+		for i in range(num_channels):
+			lines[i].set_data(x, y[i])
+			lines[i].set_label('{:s}:{: 0.3f} ({: 0.3f} |{: 0.3f} |{: 0.3f} ) {:s}'.format(
+				mononames[i+1], y[i][-1], min(y[i]), mean(y[i]), max(y[i]), '???'))
+		# end for
+		pyplot.setp(leg.texts, family='monospace')
+		figure.gca().relim()
+		#figure.gca().grid()
+		figure.gca().autoscale_view()
+	# end if
 	return lines + [leg]
+
+t = threading.Thread(target=consume_stdin)
+#t.daemon = True
+t.start()
 
 animation = FuncAnimation(figure, update, interval=INTERVAL, blit=not FANCY)
 
 pyplot.show()
-
+print("Terminating...")
+terminating = True
+t.join()
+print("Terminated.")
